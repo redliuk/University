@@ -1,0 +1,190 @@
+create schema "oca";
+set search_path to "oca";
+set datestyle to "MDY";
+
+CREATE DOMAIN Tipo AS TEXT
+CHECK(
+    VALUE ~ 'Scala'
+    OR VALUE ~ 'Serpente'
+    OR VALUE ~ 'Normale'
+);
+
+CREATE DOMAIN Podio AS TEXT
+CHECK(
+    VALUE ~ 'Primo'
+    OR VALUE ~ 'secondo'
+    OR VALUE ~ 'terzo'
+	OR VALUE ~ 'none'
+);
+
+CREATE TABLE Gioco(
+IDgioco varchar(10) PRIMARY KEY NOT NULL,
+Plancia varchar(30) NOT NULL,
+Sfondo varchar(30) NOT NULL,
+MaxSquadre decimal(2,0) NOT NULL,
+NumCaselle decimal(3,0) NOT NULL,
+NumDadi decimal(2,0) NOT NULL
+);
+
+CREATE TABLE Squadra(
+IDsquadra varchar(10) PRIMARY KEY NOT NULL,
+NomeS varchar(30) NOT NULL,
+Coach boolean DEFAULT FALSE,
+Caposquadra boolean DEFAULT FALSE
+);
+
+CREATE TABLE Icona(
+IDicona varchar(30) NOT NULL,
+NomeI varchar(30) NOT NULL,
+IDgioco varchar(10) NOT NULL,
+	FOREIGN KEY (IDgioco) REFERENCES Gioco (IDgioco),
+PRIMARY KEY(IDicona)
+);
+
+CREATE TABLE Dado(
+IDdado varchar(10) PRIMARY KEY NOT NULL,
+NumMax decimal(2,0) NOT NULL,
+NumMin decimal(2,0) NOT NULL
+);
+
+CREATE TABLE Turno(
+IDturno varchar(10) NOT NULL,
+Numero decimal(2,0) NOT NULL,
+PRIMARY KEY(IDturno)
+);
+
+CREATE TABLE Utente(
+Email varchar(30) NOT NULL,
+IDsquadra varchar(10) NOT NULL,
+	FOREIGN KEY (IDsquadra) REFERENCES Squadra (IDsquadra),
+Nickname varchar (30) NOT NULL,
+Nome varchar(30),
+Cognome varchar(30),
+DataN date CHECK (DataN BETWEEN '01/01/1900' AND CURRENT_DATE),
+PRIMARY KEY(Email, IDsquadra)
+);
+
+CREATE TABLE Sfida(
+IDsfida varchar(10) NOT NULL,
+IDgioco varchar(10) NOT NULL,
+	FOREIGN KEY (IDgioco) REFERENCES Gioco (IDgioco),
+PRIMARY KEY(IDgioco, IDsfida),
+Data date NOT NULL,
+Ora varchar(5) NOT NULL,
+Durata time NOT NULL
+);
+
+CREATE TABLE Partecipa(
+IDsfida varchar(10) NOT NULL,
+IDgioco varchar(10) NOT NULL,
+	FOREIGN KEY (IDgioco, IDsfida) REFERENCES Sfida (IDgioco,IDsfida),
+IDsquadra varchar(10) NOT NULL,
+	FOREIGN KEY (IDsquadra) REFERENCES Squadra (IDsquadra),
+IDicona varchar(10) NOT NULL,
+    FOREIGN KEY (IDicona) REFERENCES Icona (IDicona),
+PRIMARY KEY(IDsfida, IDgioco, IDicona),
+Finita boolean DEFAULT FALSE
+);
+
+CREATE TABLE Usa(
+IDgioco varchar(10) NOT NULL,
+	FOREIGN KEY (IDgioco) REFERENCES Gioco (IDgioco),
+IDdado varchar(10) NOT NULL,
+	FOREIGN KEY (IDdado) REFERENCES Dado (IDdado)
+);
+
+CREATE TABLE Lancio(
+IDdado varchar(10) NOT NULL,
+	FOREIGN KEY (IDdado) REFERENCES Dado (IDdado),
+IDturno varchar(10) NOT NULL,
+    FOREIGN KEY (IDturno) REFERENCES Turno (IDturno),
+NumCasellaArrivo decimal(3,0) NOT NULL,
+Punteggio decimal(3,0) NOT NULL
+);
+
+CREATE TABLE Svolge(
+IDturno varchar(10) NOT NULL,
+    FOREIGN KEY (IDturno) REFERENCES Turno (IDturno),
+IDsquadra varchar(10) NOT NULL,
+	FOREIGN KEY (IDsquadra) REFERENCES Squadra (IDsquadra)
+);
+
+CREATE TABLE RispostaData(
+IDrisposta varchar(10) PRIMARY KEY NOT NULL,    
+Email varchar(10) NOT NULL,
+IDsquadra varchar(10) NOT NULL,
+    FOREIGN KEY (Email, IDSquadra) REFERENCES Utente (Email, IDSquadra),
+Punteggio decimal(3,0) NOT NULL
+);
+
+CREATE TABLE Fornita(
+IDsfida varchar(10) NOT NULL,
+IDgioco varchar(10) NOT NULL,
+	FOREIGN KEY (IDgioco, IDsfida) REFERENCES Sfida (IDgioco,IDsfida),
+IDsquadra varchar(10) NOT NULL,
+	FOREIGN KEY (IDsquadra) REFERENCES Squadra (IDsquadra),
+IDrisposta varchar(10) NOT NULL,
+    FOREIGN KEY (IDRisposta) REFERENCES RispostaData (IDRisposta)
+);
+
+CREATE TABLE Casella(
+X decimal(4,0) NOT NULL,
+Y decimal(4,0) NOT NULL,
+IDgioco varchar(10) NOT NULL,
+	FOREIGN KEY (IDgioco) REFERENCES Gioco (IDgioco),
+PRIMARY KEY(IDgioco, X, Y),
+Tipologia Tipo NOT NULL,
+Video varchar(50),
+Classifica Podio,
+NumOrdine serial NOT NULL
+);
+
+CREATE TABLE Quiz(
+IDquiz varchar(10) PRIMARY KEY NOT NULL,
+TestoQ varchar(200) NOT NULL,
+ImmagineQ varchar(30),
+TimeMaxQ decimal(3,0) NOT NULL,
+X decimal(4,0) NOT NULL,
+Y decimal(4,0) NOT NULL,
+IDgioco varchar(10) NOT NULL,
+	FOREIGN KEY (IDgioco,X,Y) REFERENCES Casella (IDgioco,X,Y)
+);
+
+CREATE TABLE Task(
+IDtask varchar(10) PRIMARY KEY NOT NULL,
+TestoT varchar(200) NOT NULL,
+TimeMaxT decimal(3,0) NOT NULL,
+X decimal(4,0) NOT NULL,
+Y decimal(4,0) NOT NULL,
+IDgioco varchar(10) NOT NULL,
+	FOREIGN KEY (IDgioco,X,Y) REFERENCES Casella (IDgioco,X,Y)
+);
+
+CREATE TABLE Risposta(
+TestoR varchar(100) NOT NULL,
+IDquiz varchar(10) NOT NULL,
+	FOREIGN KEY (IDquiz) REFERENCES Quiz (IDquiz),
+PRIMARY KEY(IDquiz, TestoR),
+Voto decimal(3,0) NOT NULL,
+ImmagineR varchar(30),
+Admin boolean DEFAULT FALSE
+);
+
+CREATE TABLE Consegna(
+IDtask varchar(10) NOT NULL,
+	FOREIGN KEY (IDtask) REFERENCES Task (IDtask),
+IDrisposta varchar(10) NOT NULL,
+    FOREIGN KEY (IDrisposta) REFERENCES RispostaData (IDrisposta),
+PRIMARY KEY(IDtask, IDrisposta),
+Moderatore boolean DEFAULT FALSE,
+TestoC varchar(100) NOT NULL
+);
+
+CREATE TABLE Scelta(
+IDrisposta varchar(10) NOT NULL,
+    FOREIGN KEY (IDrisposta) REFERENCES RispostaData (IDrisposta),
+IDquiz varchar(10) NOT NULL,
+TestoR varchar(100) NOT NULL,
+    FOREIGN KEY (TestoR, IDquiz) REFERENCES Risposta (TestoR, IDquiz),
+PRIMARY KEY(IDrisposta)
+);

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+    <head> 
+        <title>Registration</title>
+        <link href="https://fonts.googleapis.com/css?family=Press+Start+2P" rel="stylesheet">
+        <link href="https://unpkg.com/nes.css/css/nes.css" rel="stylesheet" />
+        <link rel="stylesheet" type="text/css" href="\~S4865720\snakegame\css\default.css" title="default">
+        <link rel="alternate stylesheet" type="text/css" href="\~S4865720\snakegame\css\light.css" title="light">
+        <script type="text/javascript" src="\~S4865720\snakegame\js\cookie.js"></script>
+        <link rel="stylesheet" type="text/css" href="\~S4865720\snakegame\css\style1.css" />   
+    </head>
+    
+    <body>
+      <div class=lamp>
+
+        <form method="post" action="/~S4865720/snakegame/php/registration.php">
+            <center>
+            <h1>Sign-up!</h1>
+            </center>
+            <div>
+            <input type="text" id="firstname" class="nes-input" placeholder="Firstname" name="firstname" maxlength="50" style="margin-top: 5px;" required>
+            </div>
+
+            <div>
+            <input type="text" id="lastname" class="nes-input" placeholder="Lastname" name="lastname" maxlength="50" style="margin-top: 5px;" required>
+            </div>
+
+            <div>
+              <input type="email" id="email" class="nes-input" placeholder="E-mail" name="email" style="margin-top: 5px;" required>
+            </div>
+
+            <div>
+              <input type="password" id="password" class="nes-input" placeholder="Password" name="pass" style="margin-top: 5px;" required>
+            </div>
+
+            <div>
+              <input type="password" id="confirm" class="nes-input" placeholder="Password" name="confirm" style="margin-top: 5px;" required>
+            </div>
+
+            <label style="margin-top: 5px">
+              <center>
+                <input type="checkbox" name="newsletter" class="nes-checkbox"  required/>
+                  <span> accept all terms and conditions </span>
+              </center>
+            </label>
+
+            <div>
+              <button type="submit" name="submit" class="nes-input" style="margin-top: 5px">Confirm</button>
+            </div>
+        </form>
+      </div>
+    </body>
+</html>

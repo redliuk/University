@@ -1,0 +1,59 @@
+body{
+    margin: 0;
+    background-color: whitesmoke;
+  }
+
+  #submit
+  {    
+      visibility: hidden;
+  }
+
+  .nes-container{
+      margin-top: 110px;
+      margin-left: 30px;
+      text-align: center;
+      position: fixed; 
+      background-color: brown;
+  }
+
+  .header {
+    background-color: #f1f1f1;
+    padding: 30px;
+    text-align: center;
+    border-bottom: 4px solid #D3D3D3;
+  }
+
+  #navbar {
+    overflow: hidden;
+    background-color: #333;
+    border-bottom: 0px ;
+    transition: all 2.5s ease;
+    height: 85.5px;
+  }
+
+
+  #navbar button {
+    float: left;
+    display: block;
+    color: #f2f2f2;
+    text-align: center;
+    padding: 14px 16px;
+    margin-top: 12px;
+  } 
+
+  .sticky {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 3;
+  }
+
+  .sticky + .content {
+    padding-top: 30px;
+  }
+
+  #content{
+      padding-top: 200px;
+      padding-left: 600px;
+      
+  }

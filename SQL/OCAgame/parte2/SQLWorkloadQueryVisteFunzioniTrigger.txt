@@ -1,0 +1,178 @@
+
+--------------------------------------------------------WORKLOAD----------------------------------------------------------------------
+
+--Determinare l’identificatore dei giochi che coinvolgono al più quattro squadre e richiedono l’uso di due dadi.
+CREATE INDEX Giochi ON Gioco (MaxSquadre);
+CREATE INDEX NumeroDadi ON Gioco (NumDadi);
+SELECT IDgioco FROM Gioco WHERE Gioco.MaxSquadre<= 4 AND NumDadi=2;
+
+--Determinare l’identificatore delle sfide relative a un gioco A di vostra scelta (specificare direttamente l’identificatore nella richiesta) che, in alternativa: 
+--hanno avuto luogo a gennaio 2021 e durata massima superiore a 2 ore, o hanno avuto luogo a marzo 2021 e durata massima pari a 30 minuti.
+CREATE INDEX DataSfida ON Sfida (Data); 
+CREATE INDEX DurataSfida ON Sfida (Durata);
+SELECT IDsfida 
+FROM Sfida JOIN Gioco ON Sfida.IDgioco = Gioco.IDgioco 
+WHERE Sfida.IDGioco = 'g1' AND Sfida.Data BETWEEN '01/01/2021' AND '01/31/2021' AND Durata > '02:00' OR Sfida.Data BETWEEN '03/01/2021' AND '03/31/2021' AND Durata = '00:30';
+
+--Determinare le sfide, di durata massima superiore a 2 ore, dei giochi che richiedono almeno due dadi. Restituire sia l’identificatore della sfida sia l’identificatore del gioco.
+SELECT DISTINCT IDSfida, Sfida.IDGioco 
+FROM Sfida JOIN Gioco ON Sfida.IDGioco = Gioco.IDGioco 
+WHERE Gioco.IDGioco=Sfida.IDGioco AND Gioco.NumDadi >=2 AND Durata > '02:00';
+
+
+
+--------------------------------------------------------VISTA--------------------------------------------------------------------
+
+--La definizione di una vista che fornisca alcune informazioni riassuntive per ogni gioco: 
+--il numero di sfide relative a quel gioco disputate, la durata media di tali sfide, 
+--il numero di squadre e di giocatori partecipanti a tali sfide, i punteggi minimo, 
+--medio e massimo ottenuti dalle squadre partecipanti a tali sfide;
+
+--Associo ad ogni gioco il numero di sfide e la durata media di ogni sfida
+CREATE VIEW SfideDelGioco AS
+SELECT IDgioco, AVG(Durata) AS DurataMedia, COUNT(IDsfida) AS NumSfideGiocate
+FROM Sfida 
+GROUP BY Idgioco;
+
+--Asccocio alle sfide il numero di squadre e il numero di giocatori
+CREATE VIEW SquadreDellaSfida AS
+SELECT IDsfida, COUNT(Email) AS NumUtenti, COUNT(IDsquadra) AS NumSfideSqudra
+FROM Partecipa NATURAL JOIN Squadra NATURAL JOIN Utente
+GROUP BY IDsfida;
+
+--Associo alle squadre il punteggio ottenuto in ogni sfida che le squadre giocano
+CREATE VIEW PuntiDelleSquadre AS
+SELECT IDgioco, IDSfida, IDsquadra, SUM(Punteggio) AS PuntiSquadraNellaSfida
+FROM Fornita NATURAL JOIN RispostaData 
+GROUP BY IDsfida, IDgioco, IDsquadra;
+
+--Associo alle squdre il punteggio massim medio e minimo ottenuto nelle sfide di un determinato gioco
+CREATE VIEW PunteggioMaxMedioMinSquadre AS
+SELECT IDsquadra, IDgioco, MAX(PuntiSquadraNellaSfida) AS PunteggioMax,
+    AVG(PuntiSquadraNellaSfida) AS PunteggioMedio, MIN(PuntiSquadraNellaSfida) AS PunteggioMin
+FROM PuntiDelleSquadre
+GROUP BY IDsquadra, IDgioco;
+
+--Creo la vista con le informazioni riassuntive
+CREATE VIEW InfoGioco AS
+SELECT  IDGioco, IDsquadra, NumSfideGiocate, DurataMedia, NumSfideSqudra, NumUtenti, 
+    PunteggioMax, PunteggioMedio, PunteggioMin
+FROM SfideDelGioco NATURAL JOIN SquadreDellaSfida 
+			NATURAL JOIN PuntiDelleSquadre
+			NATURAL JOIN PunteggioMaxMedioMinSquadre
+GROUP BY IDGioco, IDsquadra, NumSfideGiocate, DurataMedia, NumSfideSqudra, NumUtenti, 
+    PunteggioMax, PunteggioMedio, PunteggioMin;
+
+
+
+----------------------------------------------------QUERY AGGIUNTIVE------------------------------------------------------------------------
+
+--a.Determinare i giochi che contengono caselle a cui sono associati task;
+SELECT DISTINCT IDgioco
+FROM Casella NATURAL JOIN Task;
+
+--b.Determinare i giochi che non contengono caselle a cui sono associati task;
+SELECT IDgioco
+FROM Gioco EXCEPT (SELECT IDgioco
+                   FROM Casella NATURAL JOIN Task);
+
+--c.Determinare le sfide che hanno durata superiore alla durata media delle sfide relative allo stesso gioco.
+--Per questa queery riutilizzo la vista SfidaDelGioco costruita in precedenza in questo modo riduco i dati da interrogare
+SELECT Idsfida 
+FROM Sfida S
+WHERE Durata >= (SELECT DurataMedia
+                    FROM SfideDelGioco
+                    GROUP BY DurataMedia, SfideDelGioco.IDgioco
+			        HAVING SfideDelGioco.IDgioco = S.IDgioco);
+
+
+
+----------------------------------------------------FUNZIONI E PROCEDURE:------------------------------------------------------------------------                    
+--a.Funzione che realizza l'interrogazione 2c in maniera parametrica rispetto all’ID del gioco;
+CREATE FUNCTION SfideSopraMedia (IN GiocoIN varchar(10)) RETURNS TABLE (LaSfida varchar(10)) AS $$
+	DECLARE GiocoVar varchar(10);
+	BEGIN
+		GiocoVar:= (SELECT DISTINCT IdGioco FROM Gioco WHERE IdGioco=GiocoIN);
+		IF GiocoVar IS NULL THEN RAISE EXCEPTION 'Non esiste gioco con identificatore %',IlGioco;
+		END IF;
+		RETURN QUERY    SELECT Idsfida 
+                        FROM Sfida
+                        WHERE IDgioco=GiocoVar AND Durata >=(SELECT DISTINCT DurataMedia
+                                                             FROM SfideDelGioco
+                                                             WHERE SfideDelGioco.IDgioco = GiocoVar);
+		IF NOT FOUND THEN RAISE EXCEPTION 'Non esistono sfide per il gioco %', IlGioco;
+		END IF;
+		RETURN;
+		END;
+	$$
+LANGUAGE plpgsql;
+
+--b.Funzione di scelta dell’icona da parte di una squadra in una sfida:
+--possono essere scelte solo le icone corrispondenti al gioco cui si riferisce la sfida che non siano già state scelte da altre squadre.
+CREATE FUNCTION IconaSquadra (IN SquadraIN varchar(10),  IN GiocoIN varchar(10), IN SfidaIN varchar(10), IN IconaIN varchar(30)) RETURNS void AS
+	$$
+	BEGIN
+		
+		IF (SELECT IDSquadra FROM Squadra WHERE IDSquadra=SquadraIN) IS NULL
+        THEN RAISE EXCEPTION 'Non esistiono squadre corrispondenti al parametro %',SquadraIN;
+		END IF;
+		
+		IF (SELECT IDicona FROM Icona WHERE IDicona=IconaIN) IS NULL 
+        THEN RAISE EXCEPTION 'Non esistiono icone corrispondenti al parametro %',IconaIN;
+		END IF;
+        
+        IF (SELECT IDsfida FROM Sfida WHERE IDSfida=SfidaIN) IS NULL 
+        THEN RAISE EXCEPTION 'Non esistiono sfide corrispondenti al parametro %',SfidaIN;
+		END IF;
+		
+        IF (SELECT IDgioco FROM Gioco WHERE IDgioco=GiocoIN) IS NULL 
+        THEN RAISE EXCEPTION 'Non esistiono giochi corrispondenti al parametro %',GiocoIN;
+		END IF;
+        
+         IF (SELECT IDicona FROM Icona WHERE IDgioco=GiocoIN AND IDicona=iconaIN) IS NULL 
+        THEN RAISE EXCEPTION 'icona selezionata non disponibile per il gioco corrispondente al parametro %',GiocoIN;
+		END IF;
+        
+        IF (SELECT COUNT(*) FROM Partecipa WHERE IDsfida=sfidaIN AND IDsquadra=squadraIN AND IDgioco=giocoIN)!=0  
+        THEN RAISE EXCEPTION 'La squadra selezionata ha già partecipato o sta partecipando alla sfida scelta, cambiare parametro %', SfidaIN;
+		END IF;
+        
+        IF (SELECT COUNT(*) FROM Partecipa WHERE IDsfida=sfidaIN AND IDgioco=giocoIN AND IDicona=IconaIN)!=0  
+        THEN RAISE EXCEPTION 'icona selszionata già in uso';
+		END IF;
+        
+		IF (SELECT COUNT(*) FROM Partecipa WHERE IDsfida=sfidaIN AND IDgioco=giocoIN AND Finita='FALSE' )!=0
+        THEN INSERT INTO Partecipa VALUES (SfidaIN, GiocoIN, SquadraIN, IconaIN, 'TRUE');
+	    ELSE RAISE EXCEPTION 'La sfida è terminata, selezionare una sfida differente';
+		END IF;
+	
+	END;
+	$$
+LANGUAGE plpgsql;
+
+
+--------------------------------------------------------------------------TRIGGER:------------------------------------------------------------------------------------
+--4.I seguenti trigger:
+--a.Verifica del vincolo che nessun utente possa partecipare a sfide contemporanee;
+CREATE OR REPLACE FUNCTION CheckUtenti() 
+RETURNS trigger AS $CheckUtenti$        
+
+BEGIN
+	IF (Select COUNT(*) From Utente NATURAL JOIN Partecipa
+        WHERE Partecipa.Finita = FALSE  AND Utente.Email=NEW.Email )>0      
+		THEN RAISE NOTICE '% fa già parte di una sfida!',  NEW.Email;
+	ELSE
+		RETURN NEW;
+	END IF;       
+END;
+$CheckUtenti$ 
+LANGUAGE plpgsql;
+
+CREATE TRIGGER Check_Utenti
+BEFORE INSERT OR UPDATE ON Utente FOR EACH ROW 
+EXECUTE PROCEDURE CheckUtenti();
+
+--b.Mantenimento del punteggio corrente di ciascuna squadra in ogni sfida e inserimento delle icone opportune nella casella podio.
+--HO già implementato il mantenimento del punteggio corrente di ogni squadra in ogni sfida di ogni gioco nella vista
+--PuntiDelleSquadre omettendo le squadre che non hanno risposto ne a quiz ne a task
+--Basandomi su questa vista e andandola a interrogare sò quale squadra è prima seconda o terza per qualsiasi sfida di ogni gioco

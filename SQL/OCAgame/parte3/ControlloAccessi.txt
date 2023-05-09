@@ -1,0 +1,23 @@
+CREATE ROLE gameadmin;
+GRANT ALL ON ALL TABLES IN SCHEMA oca
+TO gameadmin
+WITH GRANT OPTION;
+
+CREATE ROLE gamecreator;
+GRANT INSERT, UPDATE, DELETE 
+ON oca.Gioco, oca.Dado, oca.Casella, Oca.Icona, Oca.Quiz, oca.Task, oca.Risposta
+TO gamecreator;
+GRANT SELECT ON ALL TABLES IN SCHEMA oca 
+TO gamecreator; 
+GRANT gamecreator TO gameadmin;
+
+CREATE ROLE giocatore;
+GRANT SELECT ON ALL TABLES IN SCHEMA oca 
+TO giocatore;
+GRANT INSERT ON oca.Lancio, oca.Utente, oca.RispostaData, oca.Scelta, oca.Consegna
+TO giocatore;
+GRANT giocatore TO gameadmin;
+
+CREATE ROLE utente;
+GRANT SELECT ON oca.Gioco, oca.Squadra, oca.Sfida
+TO utente;

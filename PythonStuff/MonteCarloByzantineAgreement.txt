@@ -1,0 +1,75 @@
+import random
+import numpy as np
+import matplotlib.pyplot as plt
+
+def calcolo_bit_traditore(matrice_processi):
+    for i in range(0,3):
+        if (matrice_processi[i][i] == 0):
+            matrice_processi[i][3] = 1
+        else:
+            matrice_processi[i][3] = 0
+    return(matrice_processi)
+
+def controllo_maggioranza(row_matrice_processi):
+    count=0
+    for i in row_matrice_processi:
+        count=count+i
+    if(count<=1):
+        return(0)
+    elif(count>=3):
+        return(1)
+    else:
+        return(2)
+
+def monteCarlo(matrice_processi):
+    count=0
+    for i in range(0,3):
+        check=controllo_maggioranza(matrice_processi[i])
+        if(check==2):
+            moneta = random.randint(0, 1)
+            for j in range(0,3):
+                matrice_processi[j][i] = moneta
+        elif(check==0):
+            for elem in matrice_processi[i]:
+                if (elem==0):
+                    count=count+1
+            if (count>=3):
+                for j in range(0,3):
+                    matrice_processi[j][i] = 0
+        elif(check==3):
+            for elem in matrice_processi[i]:
+                if (elem==1):
+                    count=count+1
+            if (count>=3):
+                for j in range(0,3):
+                        matrice_processi[j][i] = 1
+    matrice_processi = calcolo_bit_traditore(matrice_processi)
+    return(matrice_processi)
+
+def main():
+    #array per registrare il numero di round per run
+    round_per_run=[]
+    #ciclo di ripetizioni (2^10)
+    for i in range(1,1025):
+        #variabili d'appoggio per leggibilità del controllo del while
+        magg1=2
+        magg2=2
+        magg3=2
+        #creo la matrice iniziale
+        matrice_processi = [[0,1,0,0],[0,1,0,0],[0,1,0,0]]
+        matrice_processi = calcolo_bit_traditore(matrice_processi)
+        #ripeto monteCarlo fino ad ottenere una maggioranza
+        round=0
+        while((magg1!=magg2 or magg1!=magg3) or magg1==2 or magg2==2 or magg3==2):
+            magg1=controllo_maggioranza(matrice_processi[0])
+            magg2=controllo_maggioranza(matrice_processi[1])
+            magg3=controllo_maggioranza(matrice_processi[2])
+            matrice_processi=monteCarlo(matrice_processi)
+            round=round+1
+        round_per_run.append(round)
+        if i % 100 == 0:
+            print("Elaborazione della " + str(i) + "esima run")
+    plt.plot(round_per_run)
+    plt.show()
+
+main()

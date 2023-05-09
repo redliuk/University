@@ -1,0 +1,133 @@
+import random
+import numpy as np
+import matplotlib.pyplot as plt
+
+def my_print(matrice_processi)
+    for i in matrice_processi
+        print(i)
+    print() 
+
+def calcolo_bit_traditore(matrice_processi)
+    for i in range(0,7)
+        if (matrice_processi[i][i] == 0)
+            matrice_processi[i][8] = 1
+        else
+            matrice_processi[i][8] = 0
+    if(matrice_processi[7][7]==0)
+        matrice_processi[7][8]=1
+    else
+        matrice_processi[7][8]=0
+    return(matrice_processi)
+
+def conteggio_bit_maggioritario(row_matrice_processi)
+    count=0
+    for i in row_matrice_processi
+        if(i==0)
+            count=count+1
+    if(count=5)
+        return(count)
+    else
+        return(9-count)
+        
+def valore_bit_maggioritario(row_matrice_processi)
+    count=0
+    for i in row_matrice_processi
+        if(i==0)
+            count=count+1
+    if(count=5)
+        return(0)
+    else
+        return(1)   
+        
+def controllo_maggioranza(matrice_processi)
+    maggioranza=[]
+    count=0
+    count2=0
+    for i in range(0,8)
+        for j in range(0,9)
+            if(matrice_processi[i][j]==0)
+                count=count+1
+        if(count=8)
+            maggioranza.append(0)
+        elif(9-count=8)
+            maggioranza.append(1)
+        else
+            maggioranza.append(1)
+    count=0
+    for j in maggioranza
+        if(j==0)
+             count=count+1
+        if(j==1)
+            count2=count2+1
+    if(count=8 or count2=8)
+        return(True)
+    else
+        return(False)
+    
+    
+def LasVegas(matrice_processi)
+    count=0
+    soglia=0
+    matrice_aux = [ [98 for i in range(9)] for j in range(8)]
+    #ripeto per ogni processo(astratto in una riga della matrice)
+    for i in range(0,8)
+        #scelgo la soglia in modo randomico
+        moneta = random.randint(0, 1)
+        if(moneta==0)
+            soglia=6
+        elif(moneta==1)
+            soglia=7
+        #conto le ripetizioni del bit prevalente fra quelli ricevuti dal processo
+        #ed identifico qual'è il valore del bit prevalene
+        check=conteggio_bit_maggioritario(matrice_processi[i])
+        bit_maggioritario=valore_bit_maggioritario(matrice_processi[i])
+        #esploro i casi dell'algoritmo Las Vegas
+        if(check=soglia)
+            for j in range(0,8)
+                matrice_aux[j][i] = bit_maggioritario
+        else
+            for j in range(0,8)
+                matrice_aux[j][i] = 0
+        if(check=7)
+            for j in range(0,8)
+                matrice_aux[j][i] = bit_maggioritario
+    #calcolo il bit scelto dal processo traditore
+    matrice_aux = calcolo_bit_traditore(matrice_aux)
+    return(matrice_aux)
+
+def matrice_iniziale(matrice_processi)
+    for i in range(0,9)
+        for j in range(0,8)
+            val = random.randint(0, 1)
+            matrice_processi[j][i]=val
+    return(matrice_processi)
+
+def main()
+    #array per registrare il numero di round per run
+    valore_medio=0
+    round_per_run=[]
+    matrice_processi = [ [98 for i in range(9)] for j in range(8)]
+    matrice_processi=matrice_iniziale(matrice_processi)
+    matrice_processi = calcolo_bit_traditore(matrice_processi)
+    print('ecco un esempio della matrice di partenza')
+    my_print(matrice_processi)
+    for i in range(1,1025)
+        #creo la matrice iniziale in modo randomico
+        matrice_processi = [ [98 for i in range(9)] for j in range(8)]
+        matrice_processi=matrice_iniziale(matrice_processi)
+        matrice_processi = calcolo_bit_traditore(matrice_processi)
+        #ripeto Las Vegas fino ad ottenere una maggioranza
+        round=0
+        while(not controllo_maggioranza(matrice_processi))
+            matrice_processi=LasVegas(matrice_processi)
+            round=round+1
+        round_per_run.append(round)
+        if i % 100 == 0
+            print(Elaborazione della  + str(i) + esima run)
+    valore_medio=np.median(round_per_run)
+    print('valore medio' + str(valore_medio))
+    print()
+    print(ecco un esempio della matrice a seguito dell'applicazione dell'algoritmo)
+    my_print(matrice_processi)
+    
+main()
